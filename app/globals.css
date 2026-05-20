@@ -1,6 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-mazaya-green: #005B41;
+  --color-mazaya-green-light: #007A57;
+  --color-mazaya-green-pale: #E8F5F0;
+  --color-mazaya-bg: #F8F7F4;
+}
 
 :root {
   --mazaya-green: #005B41;
