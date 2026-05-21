@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import MetricCard from '@/components/MetricCard'
 import StatusBadge from '@/components/StatusBadge'
@@ -141,6 +141,32 @@ export default function ServicesPage() {
     }
   }
 
+  const tableRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const updateScrollState = () => {
+    const el = tableRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  }
+
+  useEffect(() => {
+    const el = tableRef.current
+    if (!el) return
+    updateScrollState()
+    el.addEventListener('scroll', updateScrollState)
+    const ro = new ResizeObserver(updateScrollState)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', updateScrollState); ro.disconnect() }
+  }, [])
+
+  useEffect(() => { updateScrollState() }, [data])
+
+  const scroll = (dir: 'left' | 'right') =>
+    tableRef.current?.scrollBy({ left: dir === 'left' ? -240 : 240, behavior: 'smooth' })
+
   const orders = data?.orders || []
 
   return (
@@ -179,19 +205,29 @@ export default function ServicesPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">Service Orders</h2>
+          {(canScrollLeft || canScrollRight) && (
+            <div className="flex items-center gap-1">
+              <button onClick={() => scroll('left')} disabled={!canScrollLeft} className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-default">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <button onClick={() => scroll('right')} disabled={!canScrollRight} className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-default">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          )}
         </div>
-        <div className="overflow-x-auto">
+        <div ref={tableRef} className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Ref</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Clinic / Tower</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Service Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Quote (KD)</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendor</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Ref</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Clinic / Tower</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Service Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Quote (KD)</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Vendor</th>
               </tr>
             </thead>
             <tbody>
@@ -211,9 +247,9 @@ export default function ServicesPage() {
                       className={`border-b border-gray-50 ${isPending ? 'hover:bg-amber-50 cursor-pointer' : 'hover:bg-green-50 cursor-pointer'} ${idx % 2 !== 0 ? 'bg-[#F8F7F4]' : ''}`}
                       onClick={() => isPending && !actionResult[order.id] ? setApprovalModal(order) : undefined}
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{order.reference || order.id.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-gray-700">{order.clinic || order.tower || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600">{order.service_type}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-gray-700 whitespace-nowrap">{order.reference || order.id.slice(0, 8)}</td>
+                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{order.clinic || order.tower || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{order.service_type}</td>
                       <td className="px-4 py-3 text-gray-700 font-medium">{formatKD(order.quote_kd)}</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={finalStatus} />
@@ -221,7 +257,7 @@ export default function ServicesPage() {
                           <span className="ml-1.5 text-xs text-amber-600 font-medium">· click to review</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{order.vendor_name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{order.vendor_name || '—'}</td>
                     </tr>
                   )
                 })

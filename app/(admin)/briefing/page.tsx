@@ -42,6 +42,50 @@ function highlightEntities(message: string, entities: string[] = []) {
   )
 }
 
+function renderInline(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*|\*[^*]+\*)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**'))
+      return <span key={i} className="font-semibold text-gray-900">{part.slice(2, -2)}</span>
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2)
+      return <span key={i} className="font-medium">{part.slice(1, -1)}</span>
+    return <span key={i}>{part}</span>
+  })
+}
+
+function renderBriefing(text: string) {
+  return text.split('\n').map((line, i) => {
+    const trimmed = line.trim()
+    if (!trimmed) return <div key={i} className="h-1" />
+
+    if (/^\*\s/.test(trimmed)) {
+      const content = trimmed.replace(/^\*\s+/, '')
+      return (
+        <div key={i} className="flex gap-2 text-sm text-gray-800">
+          <span className="text-gray-400 shrink-0">•</span>
+          <span>{renderInline(content)}</span>
+        </div>
+      )
+    }
+
+    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/)
+    if (numberedMatch) {
+      return (
+        <div key={i} className="flex gap-2 text-sm text-gray-800">
+          <span className="text-gray-500 shrink-0 font-medium">{numberedMatch[1]}.</span>
+          <span>{renderInline(numberedMatch[2])}</span>
+        </div>
+      )
+    }
+
+    if (/^\*\*[^*]+\*\*$/.test(trimmed)) {
+      return <p key={i} className="text-sm font-semibold text-gray-900 mt-3">{trimmed.slice(2, -2)}</p>
+    }
+
+    return <p key={i} className="text-sm text-gray-800">{renderInline(trimmed)}</p>
+  })
+}
+
 function normalizeBriefing(data: Briefing | null): Briefing | null {
   if (!data) return null
 
@@ -177,7 +221,7 @@ export default function BriefingPage() {
                 })}
               </span>
             </div>
-            <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">{briefing.briefing_en}</p>
+            <div className="space-y-1.5 leading-relaxed">{renderBriefing(briefing.briefing_en)}</div>
           </div>
 
           {/* Alerts */}

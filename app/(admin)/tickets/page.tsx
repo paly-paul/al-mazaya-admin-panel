@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import MetricCard from '@/components/MetricCard'
 import StatusBadge from '@/components/StatusBadge'
@@ -160,6 +160,32 @@ export default function TicketsPage() {
     setPriorities(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
   }
 
+  const tableRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const updateScrollState = () => {
+    const el = tableRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  }
+
+  useEffect(() => {
+    const el = tableRef.current
+    if (!el) return
+    updateScrollState()
+    el.addEventListener('scroll', updateScrollState)
+    const ro = new ResizeObserver(updateScrollState)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', updateScrollState); ro.disconnect() }
+  }, [])
+
+  useEffect(() => { updateScrollState() }, [data])
+
+  const scroll = (dir: 'left' | 'right') =>
+    tableRef.current?.scrollBy({ left: dir === 'left' ? -240 : 240, behavior: 'smooth' })
+
   const tickets = (data?.tickets || []).filter(t => priorities.includes(t.priority))
 
   return (
@@ -198,34 +224,46 @@ export default function TicketsPage() {
 
       {/* Filter */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-6">
-          <h2 className="text-sm font-semibold text-gray-700">Tickets</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-gray-500 font-medium">Filter by priority:</span>
-            {PRIORITY_OPTIONS.map(p => (
-              <label key={p} className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={priorities.includes(p)}
-                  onChange={() => togglePriority(p)}
-                  className="rounded"
-                />
-                <span className="text-xs font-medium text-gray-700">{p}</span>
-              </label>
-            ))}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-6 flex-wrap">
+            <h2 className="text-sm font-semibold text-gray-700">Tickets</h2>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-gray-500 font-medium">Filter by priority:</span>
+              {PRIORITY_OPTIONS.map(p => (
+                <label key={p} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={priorities.includes(p)}
+                    onChange={() => togglePriority(p)}
+                    className="rounded"
+                  />
+                  <span className="text-xs font-medium text-gray-700">{p}</span>
+                </label>
+              ))}
+            </div>
           </div>
+          {(canScrollLeft || canScrollRight) && (
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => scroll('left')} disabled={!canScrollLeft} className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-default">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <button onClick={() => scroll('right')} disabled={!canScrollRight} className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-default">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+          )}
         </div>
-        <div className="overflow-x-auto">
+        <div ref={tableRef} className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Ref</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tower · Floor</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Priority</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendor</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">SLA Remaining</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Ref</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Tower · Floor</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Priority</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Vendor</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">SLA Remaining</th>
               </tr>
             </thead>
             <tbody>
@@ -244,13 +282,13 @@ export default function TicketsPage() {
                       className={`border-b border-gray-50 hover:bg-green-50 cursor-pointer ${idx % 2 !== 0 ? 'bg-[#F8F7F4]' : ''}`}
                       onClick={() => setSelectedTicket(ticket)}
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{ticket.reference || ticket.id.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-gray-700">
+                      <td className="px-4 py-3 font-mono text-xs text-gray-700 whitespace-nowrap">{ticket.reference || ticket.id.slice(0, 8)}</td>
+                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
                         {ticket.tower || '—'}{ticket.floor ? ` · ${ticket.floor}` : ''}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{ticket.category}</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{ticket.category}</td>
                       <td className="px-4 py-3 text-xs font-medium">{priorityDot(ticket.priority)}</td>
-                      <td className="px-4 py-3 text-gray-600">{ticket.vendor_name || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{ticket.vendor_name || '—'}</td>
                       <td className="px-4 py-3"><StatusBadge status={ticket.status} /></td>
                       <td className={`px-4 py-3 text-xs ${sla.cls}`}>{sla.label}</td>
                     </tr>

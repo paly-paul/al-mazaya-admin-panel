@@ -135,9 +135,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-gray-400 mt-6">
+          {/* <p className="text-center text-xs text-gray-400 mt-6">
             Default: admin / Admin@Mazaya2025
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

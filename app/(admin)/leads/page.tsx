@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
 import MetricCard from '@/components/MetricCard'
 import StatusBadge from '@/components/StatusBadge'
@@ -136,6 +136,32 @@ export default function LeadsPage() {
     }
   }
 
+  const tableRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const updateScrollState = () => {
+    const el = tableRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  }
+
+  useEffect(() => {
+    const el = tableRef.current
+    if (!el) return
+    updateScrollState()
+    el.addEventListener('scroll', updateScrollState)
+    const ro = new ResizeObserver(updateScrollState)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', updateScrollState); ro.disconnect() }
+  }, [])
+
+  useEffect(() => { updateScrollState() }, [data])
+
+  const scroll = (dir: 'left' | 'right') =>
+    tableRef.current?.scrollBy({ left: dir === 'left' ? -240 : 240, behavior: 'smooth' })
+
   const leads = data?.leads || []
 
   return (
@@ -169,22 +195,36 @@ export default function LeadsPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">All Leads</h2>
+          {(canScrollLeft || canScrollRight) && (
+            <div className="flex items-center gap-1">
+              <button onClick={() => scroll('left')} disabled={!canScrollLeft} className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-default">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button onClick={() => scroll('right')} disabled={!canScrollRight} className="p-1.5 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-default">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
-        <div className="overflow-x-auto">
+        <div ref={tableRef} className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Specialty</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tower</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Score</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Assigned</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Created</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Specialty</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Tower</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Score</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Source</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Assigned</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -200,18 +240,18 @@ export default function LeadsPage() {
                 leads.map((lead, idx) => (
                   <tr
                     key={lead.id}
-                    className={`border-b border-gray-50 hover:bg-green-50 cursor-pointer ${idx % 2 === 0 ? '' : 'bg-[#F8F7F4]'}`}
+                    className={`border-b border-gray-50 hover:bg-green-50 cursor-pointer ${idx % 2 === 0 ? '' : 'bg-mazaya-bg'}`}
                     onClick={() => setSelectedLead(lead)}
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900">{lead.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{lead.specialty || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{lead.tower_preference || '—'}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{lead.name}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lead.specialty || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lead.tower_preference || '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${scoreBg(lead.score)} ${scoreColor(lead.score)}`}>
                         {lead.score}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{lead.source || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{lead.source || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="relative" onClick={e => e.stopPropagation()}>
                         <button
@@ -221,7 +261,7 @@ export default function LeadsPage() {
                           <StatusBadge status={lead.status} />
                         </button>
                         {statusDropdown === lead.id && (
-                          <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[130px]">
+                          <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-32.5">
                             {STATUS_OPTIONS.map(s => (
                               <button
                                 key={s}
@@ -249,7 +289,7 @@ export default function LeadsPage() {
                           Assign
                         </button>
                         {assignDropdown === lead.id && (
-                          <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-[170px]">
+                          <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 min-w-42.5">
                             {AGENT_OPTIONS.map(agent => (
                               <button
                                 key={agent}
